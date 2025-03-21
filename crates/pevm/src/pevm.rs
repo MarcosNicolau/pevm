@@ -3,6 +3,7 @@ use std::{
     num::NonZeroUsize,
     sync::{mpsc, Mutex, OnceLock},
     thread,
+    time::Instant,
 };
 
 use alloy_primitives::{TxNonce, U256};
@@ -198,14 +199,31 @@ impl Pevm {
         thread::scope(|scope| {
             for _ in 0..concurrency_level.into() {
                 scope.spawn(|| {
+                    let since = Instant::now();
                     let mut task = scheduler.next_task();
+                    println!(
+                        "Time taken for next_task: {:?}",
+                        since.elapsed().as_millis()
+                    );
                     while task.is_some() {
                         task = match task.unwrap() {
                             Task::Execution(tx_version) => {
-                                self.try_execute(&vm, &scheduler, tx_version)
+                                let since = Instant::now();
+                                let result = self.try_execute(&vm, &scheduler, tx_version);
+                                println!(
+                                    "Time taken executing task: {:?}",
+                                    since.elapsed().as_millis()
+                                );
+                                result
                             }
                             Task::Validation(tx_version) => {
-                                try_validate(&mv_memory, &scheduler, &tx_version)
+                                let since = Instant::now();
+                                let result = try_validate(&mv_memory, &scheduler, &tx_version);
+                                println!(
+                                    "Time taken for validating task: {:?}",
+                                    since.elapsed().as_millis()
+                                );
+                                result
                             }
                         };
 
@@ -220,13 +238,17 @@ impl Pevm {
                         }
 
                         if task.is_none() {
+                            let since = Instant::now();
                             task = scheduler.next_task();
+                            println!(
+                                "Time taken for next_task 2: {:?}",
+                                since.elapsed().as_millis()
+                            );
                         }
                     }
                 });
             }
         });
-
         if let Some(abort_reason) = self.abort_reason.take() {
             match abort_reason {
                 AbortReason::FallbackToSequential => {

@@ -28,7 +28,17 @@ impl PevmEthereum {
         Self { id: 1 }
     }
 
-    // TODO: support Ethereum Sepolia and other testnets
+    pub const fn sepolia() -> Self {
+        Self { id: 11155111 }
+    }
+
+    pub const fn holesky() -> Self {
+        Self { id: 17000 }
+    }
+
+    pub fn new(id: u64) -> Self {
+        Self { id }
+    }
 }
 
 /// Represents errors that can occur when parsing transactions
